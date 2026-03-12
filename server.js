@@ -152,7 +152,7 @@ app.get('/api/libby', async (req, res) => {
       holdsCount: item.holdsCount ?? 0,
       estimatedWaitDays: item.estimatedWaitDays ?? 0,
       coverUrl: item.covers?.cover300Wide?.href || item.covers?.cover150Wide?.href || null,
-      url: `https://libbyapp.com/library/telaviv/details/${item.id || item.reserveId}`,
+      url: `https://telaviv.overdrive.com/media/${item.reserveId || item.id}`,
     }));
 
     res.json({ books, total: data.totalItems || books.length });
