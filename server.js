@@ -3,6 +3,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const app = express();
 const PORT = 3001;
@@ -160,6 +161,29 @@ app.get('/api/libby', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+function killIfSameProcess(port) {
+  try {
+    const netstat = execSync(`netstat -ano`, { encoding: 'utf8' });
+    const match = netstat.split('\n')
+      .find(line => line.includes(`:${port} `) && line.includes('LISTENING'));
+    if (!match) return;
+
+    const pid = match.trim().split(/\s+/).pop();
+    const cmdline = execSync(
+      `powershell -Command "(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').CommandLine"`,
+      { encoding: 'utf8' }
+    );
+    if (cmdline.toLowerCase().includes('server.js')) {
+      console.log(`Killing previous instance (PID ${pid})...`);
+      execSync(`taskkill /PID ${pid} /F`);
+    }
+  } catch {
+    // port not in use or query failed — proceed normally
+  }
+}
+
+killIfSameProcess(PORT);
 
 app.listen(PORT, () => {
   console.log(`Library search running at http://localhost:${PORT}`);

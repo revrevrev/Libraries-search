@@ -341,6 +341,12 @@
   }
 
   function renderEvritCard(b) {
+    const hasCover = !!b.coverUrl;
+    const cardClass = hasCover ? 'book-card has-cover' : 'book-card';
+    const coverHtml = hasCover
+      ? `<img class="book-cover" src="${escHtml(b.coverUrl)}" alt="" loading="lazy">`
+      : '';
+
     const typeBadges = [
       b.isDigital ? '<span class="badge badge-digital">ספר דיגיטלי</span>' : '',
       b.isPrinted ? '<span class="badge badge-print">מודפס</span>' : '',
@@ -355,7 +361,8 @@
     }
 
     return `
-      <div class="book-card">
+      <div class="${cardClass}">
+        ${coverHtml}
         <div>
           <a class="book-title" href="${escHtml(b.url)}" target="_blank" rel="noopener">${escHtml(b.name)}</a>
           ${b.author ? `<div class="book-author">${escHtml(b.author)}</div>` : ''}
