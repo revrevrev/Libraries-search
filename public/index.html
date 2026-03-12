@@ -421,7 +421,7 @@
       if (b.availableCopies) {
         availDetail = `<div class="availability-detail">${b.availableCopies} עותקים זמינים מתוך ${b.ownedCopies}</div>`;
       }
-    } else if (b.holdsCount > 0) {
+    } else if (b.ownedCopies > 0) {
       availBadge = `<span class="badge badge-waitlist">בתור</span>`;
       const waitText = b.estimatedWaitDays > 0
         ? `ממתינים: ${b.holdsCount} | המתנה משוערת: ~${b.estimatedWaitDays} ימים`
