@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>חיפוש ספרים בספריות דיגיטליות</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a56db 0%, #0e3fa5 100%);
+      color: white;
+      padding: 2rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      letter-spacing: 0.01em;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 0.5rem;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    #query {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      direction: rtl;
+      outline: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    #query:focus { box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
+
+    #search-btn {
+      padding: 0.75rem 1.5rem;
+      background: #f97316;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    #search-btn:hover { background: #ea6c0a; }
+    #search-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* ── Results grid ── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      max-width: 1200px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+    }
+
+    @media (max-width: 700px) {
+      .results-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Column ── */
+    .column-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+
+    .column-header h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .result-count {
+      font-size: 0.8rem;
+      background: #e2e8f0;
+      color: #475569;
+      border-radius: 20px;
+      padding: 0.15rem 0.6rem;
+      font-weight: 600;
+    }
+
+    .site-logo {
+      height: 22px;
+      width: auto;
+    }
+
+    /* ── States ── */
+    .state-box {
+      background: white;
+      border-radius: 10px;
+      padding: 2rem 1rem;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.95rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #1a56db;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 0.75rem;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .state-box.error { color: #dc2626; }
+
+    /* ── Book card ── */
+    .book-card {
+      background: white;
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.6rem;
+      border: 1px solid #e8ecf0;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem;
+      transition: box-shadow 0.15s;
+    }
+
+    .book-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+    /* Libby cards have a cover image */
+    .book-card.has-cover {
+      grid-template-columns: auto 1fr auto;
+    }
+
+    .book-cover {
+      width: 56px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      grid-row: span 3;
+    }
+
+    .book-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1a56db;
+      text-decoration: none;
+      line-height: 1.3;
+    }
+
+    .book-title:hover { text-decoration: underline; }
+
+    .book-author {
+      font-size: 0.82rem;
+      color: #475569;
+      margin-top: 0.2rem;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.45rem;
+      align-items: center;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .badge-digital  { background: #dbeafe; color: #1d4ed8; }
+    .badge-print    { background: #fef3c7; color: #92400e; }
+    .badge-audio    { background: #f3e8ff; color: #7e22ce; }
+    .badge-ebook    { background: #dbeafe; color: #1d4ed8; }
+    .badge-audiobook{ background: #f3e8ff; color: #7e22ce; }
+    .badge-magazine { background: #dcfce7; color: #166534; }
+
+    .badge-loan {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #86efac;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .badge-loan::before { content: "📚"; font-size: 0.75rem; }
+
+    .badge-available  { background: #dcfce7; color: #166534; }
+    .badge-waitlist   { background: #fef3c7; color: #92400e; }
+    .badge-unavailable{ background: #fee2e2; color: #991b1b; }
+
+    .availability-detail {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
+    /* no-loan indicator shown only on hover/subtle */
+    .badge-no-loan-unknown {
+      background: #f1f5f9;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>חיפוש ספרים בספריות דיגיטליות</h1>
+  <div class="search-bar">
+    <input id="query" type="text" placeholder="הקלד שם ספר…" autocomplete="off" />
+    <button id="search-btn" onclick="doSearch()">חיפוש</button>
+  </div>
+</header>
+
+<div class="results-grid">
+  <!-- e-vrit column (RTL = appears on right) -->
+  <div id="evrit-col">
+    <div class="column-header">
+      <h2>עברית</h2>
+      <span id="evrit-count" class="result-count" style="display:none"></span>
+    </div>
+    <div id="evrit-results" class="state-box">חפש ספר כדי לראות תוצאות</div>
+  </div>
+
+  <!-- Libby column (appears on left) -->
+  <div id="libby-col">
+    <div class="column-header">
+      <h2>Libby – ספריית תל אביב</h2>
+      <span id="libby-count" class="result-count" style="display:none"></span>
+    </div>
+    <div id="libby-results" class="state-box">חפש ספר כדי לראות תוצאות</div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('query').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doSearch();
+  });
+
+  async function doSearch() {
+    const q = document.getElementById('query').value.trim();
+    if (!q) return;
+
+    const btn = document.getElementById('search-btn');
+    btn.disabled = true;
+
+    // Reset counts
+    ['evrit-count', 'libby-count'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.display = 'none';
+      el.textContent = '';
+    });
+
+    // Show loaders
+    setLoading('evrit-results');
+    setLoading('libby-results');
+
+    // Run both searches in parallel
+    const [evritData, libbyData] = await Promise.allSettled([
+      apiFetch(`/api/evrit?q=${encodeURIComponent(q)}`),
+      apiFetch(`/api/libby?q=${encodeURIComponent(q)}`),
+    ]);
+
+    renderEvrit(evritData);
+    renderLibby(libbyData);
+
+    btn.disabled = false;
+  }
+
+  async function apiFetch(url) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  function setLoading(containerId) {
+    document.getElementById(containerId).innerHTML =
+      `<div class="state-box"><div class="spinner"></div><br>מחפש…</div>`;
+  }
+
+  function setError(containerId, msg) {
+    document.getElementById(containerId).innerHTML =
+      `<div class="state-box error">שגיאה: ${escHtml(msg)}</div>`;
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── e-vrit rendering ──────────────────────────────────────────────────────
+
+  function renderEvrit(result) {
+    const container = document.getElementById('evrit-results');
+
+    if (result.status === 'rejected') {
+      setError('evrit-results', result.reason?.message || 'שגיאה לא ידועה');
+      return;
+    }
+
+    const { books, total, shown } = result.value;
+
+    if (!books || books.length === 0) {
+      container.innerHTML = `<div class="state-box">לא נמצאו תוצאות</div>`;
+      return;
+    }
+
+    // Show count
+    const countEl = document.getElementById('evrit-count');
+    countEl.textContent = total > shown ? `${shown} מתוך ${total}` : `${shown}`;
+    countEl.style.display = '';
+
+    container.innerHTML = books.map(renderEvritCard).join('');
+  }
+
+  function renderEvritCard(b) {
+    const typeBadges = [
+      b.isDigital ? '<span class="badge badge-digital">ספר דיגיטלי</span>' : '',
+      b.isPrinted ? '<span class="badge badge-print">מודפס</span>' : '',
+      b.isAudio   ? '<span class="badge badge-audio">ספר שמע</span>' : '',
+    ].filter(Boolean).join('');
+
+    let loanBadge = '';
+    if (b.isLoan === true) {
+      loanBadge = `<span class="badge badge-loan">ספרייה ציבורית דיגיטלית</span>`;
+    } else if (b.isLoan === null) {
+      loanBadge = `<span class="badge badge-no-loan-unknown" title="לא ניתן לאמת">?</span>`;
+    }
+
+    return `
+      <div class="book-card">
+        <div>
+          <a class="book-title" href="${escHtml(b.url)}" target="_blank" rel="noopener">${escHtml(b.name)}</a>
+          ${b.author ? `<div class="book-author">${escHtml(b.author)}</div>` : ''}
+          <div class="badges">
+            ${typeBadges}
+            ${loanBadge}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // ── Libby rendering ───────────────────────────────────────────────────────
+
+  function renderLibby(result) {
+    const container = document.getElementById('libby-results');
+
+    if (result.status === 'rejected') {
+      setError('libby-results', result.reason?.message || 'שגיאה לא ידועה');
+      return;
+    }
+
+    const { books, total } = result.value;
+
+    if (!books || books.length === 0) {
+      container.innerHTML = `<div class="state-box">לא נמצאו תוצאות</div>`;
+      return;
+    }
+
+    const countEl = document.getElementById('libby-count');
+    countEl.textContent = total > books.length ? `${books.length} מתוך ${total}` : `${books.length}`;
+    countEl.style.display = '';
+
+    container.innerHTML = books.map(renderLibbyCard).join('');
+  }
+
+  function renderLibbyCard(b) {
+    const hasCover = !!b.coverUrl;
+    const cardClass = hasCover ? 'book-card has-cover' : 'book-card';
+
+    const coverHtml = hasCover
+      ? `<img class="book-cover" src="${escHtml(b.coverUrl)}" alt="" loading="lazy">`
+      : '';
+
+    const typeId = (b.typeId || '').toLowerCase();
+    let typeBadge = '';
+    if (typeId === 'ebook') typeBadge = '<span class="badge badge-ebook">ספר דיגיטלי</span>';
+    else if (typeId === 'audiobook') typeBadge = '<span class="badge badge-audiobook">ספר שמע</span>';
+    else if (typeId === 'magazine') typeBadge = '<span class="badge badge-magazine">מגזין</span>';
+    else if (b.type) typeBadge = `<span class="badge badge-digital">${escHtml(b.type)}</span>`;
+
+    let availBadge, availDetail = '';
+    if (b.isAvailable) {
+      availBadge = `<span class="badge badge-available">זמין</span>`;
+      if (b.availableCopies) {
+        availDetail = `<div class="availability-detail">${b.availableCopies} עותקים זמינים מתוך ${b.ownedCopies}</div>`;
+      }
+    } else if (b.holdsCount > 0) {
+      availBadge = `<span class="badge badge-waitlist">בתור</span>`;
+      const waitText = b.estimatedWaitDays > 0
+        ? `ממתינים: ${b.holdsCount} | המתנה משוערת: ~${b.estimatedWaitDays} ימים`
+        : `ממתינים: ${b.holdsCount}`;
+      availDetail = `<div class="availability-detail">${waitText}</div>`;
+    } else {
+      availBadge = `<span class="badge badge-unavailable">לא זמין</span>`;
+    }
+
+    return `
+      <div class="${cardClass}">
+        ${coverHtml}
+        <div>
+          <a class="book-title" href="${escHtml(b.url)}" target="_blank" rel="noopener">${escHtml(b.title)}</a>
+          ${b.author ? `<div class="book-author">${escHtml(b.author)}</div>` : ''}
+          <div class="badges">
+            ${typeBadge}
+            ${availBadge}
+          </div>
+          ${availDetail}
+        </div>
+      </div>`;
+  }
+</script>
+
+</body>
+</html>
