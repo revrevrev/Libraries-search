@@ -13,7 +13,7 @@ A web app that searches for a book simultaneously in two Israeli digital library
 
 - Search both sites in parallel with a single query
 - **e-vrit**: shows format badges (digital / print / audio) and highlights books available for public library loan ("ספרייה ציבורית דיגיטלית")
-- **Libby**: shows cover image, format type, and real-time availability (available / waitlist with estimated wait days / unavailable)
+- **Libby**: shows cover image and format type
 - Hebrew/RTL UI, responsive two-column layout
 - Clickable results linking directly to each book's page
 
@@ -30,13 +30,24 @@ npm start
 
 Then open http://localhost:3001 in your browser.
 
+## Deployment
+
+The app is deployable to [Render.com](https://render.com) (or any Node.js host):
+
+1. Push the repo to GitHub
+2. Create a new **Web Service** on Render pointing to the repo
+3. Build command: `npm install` · Start command: `npm start`
+4. Render automatically injects the `PORT` environment variable
+
+> On the free tier, the service sleeps after 15 minutes of inactivity and takes ~30 seconds to wake on the next request.
+
 ## How It Works
 
 ### Backend (`server.js`)
 
 - **`GET /api/evrit?q=...`** — Fetches the e-vrit search page, extracts the `ProductListItems` array from the server-rendered React props, then checks each book's product page in parallel for the `loan-product__txt` CSS class to determine library loan availability. Returns up to 15 results.
 
-- **`GET /api/libby?q=...`** — Proxies a search to the OverDrive API (`thunder.api.overdrive.com/v2/libraries/telaviv/media`) and returns structured availability data. No authentication required.
+- **`GET /api/libby?q=...`** — Proxies a search to the OverDrive API (`thunder.api.overdrive.com/v2/libraries/telaviv/media`). No authentication required. Availability data from this API is cached and unreliable, so it is not displayed.
 
 ### Frontend (`public/index.html`)
 

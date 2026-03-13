@@ -251,6 +251,15 @@
 </div>
 
 <script>
+  // Warm up the Render server on page load to avoid cold-start delays on first search
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  btn.textContent = 'מתחמם…';
+  fetch('/api/libby?q=a').finally(() => {
+    btn.disabled = false;
+    btn.textContent = 'חיפוש';
+  });
+
   document.getElementById('query').addEventListener('keydown', e => {
     if (e.key === 'Enter') doSearch();
   });
