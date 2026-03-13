@@ -6,7 +6,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -146,11 +146,6 @@ app.get('/api/libby', async (req, res) => {
       author: item.firstCreatorName || '',
       type: item.type?.name || '',
       typeId: item.type?.id || '',
-      isAvailable: item.isAvailable,
-      availableCopies: item.availableCopies ?? 0,
-      ownedCopies: item.ownedCopies ?? 0,
-      holdsCount: item.holdsCount ?? 0,
-      estimatedWaitDays: item.estimatedWaitDays ?? 0,
       coverUrl: item.covers?.cover300Wide?.href || item.covers?.cover150Wide?.href || null,
       url: `https://libbyapp.com/library/telaviv/everything/page-1/${item.id || item.reserveId}`,
     }));
@@ -163,6 +158,7 @@ app.get('/api/libby', async (req, res) => {
 });
 
 function killIfSameProcess(port) {
+  if (process.platform !== 'win32') return;
   try {
     const netstat = execSync(`netstat -ano`, { encoding: 'utf8' });
     const match = netstat.split('\n')

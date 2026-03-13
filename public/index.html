@@ -17,7 +17,7 @@
 
     /* ── Header ── */
     header {
-      background: linear-gradient(135deg, #1a56db 0%, #0e3fa5 100%);
+      background: #18181b;
       color: white;
       padding: 2rem 1.5rem 2.5rem;
       text-align: center;
@@ -53,7 +53,7 @@
 
     #search-btn {
       padding: 0.75rem 1.5rem;
-      background: #f97316;
+      background: #b45309;
       color: white;
       border: none;
       border-radius: 8px;
@@ -64,7 +64,7 @@
       white-space: nowrap;
     }
 
-    #search-btn:hover { background: #ea6c0a; }
+    #search-btn:hover { background: #92400e; }
     #search-btn:disabled { background: #aaa; cursor: not-allowed; }
 
     /* ── Results grid ── */
@@ -125,7 +125,7 @@
       width: 28px;
       height: 28px;
       border: 3px solid #e2e8f0;
-      border-top-color: #1a56db;
+      border-top-color: #b45309;
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       margin-bottom: 0.75rem;
@@ -167,7 +167,7 @@
     .book-title {
       font-size: 0.95rem;
       font-weight: 700;
-      color: #1a56db;
+      color: #92400e;
       text-decoration: none;
       line-height: 1.3;
     }
@@ -196,10 +196,10 @@
       white-space: nowrap;
     }
 
-    .badge-digital  { background: #dbeafe; color: #1d4ed8; }
-    .badge-print    { background: #fef3c7; color: #92400e; }
+    .badge-digital  { background: #fef3c7; color: #92400e; }
+    .badge-print    { background: #e7e5e4; color: #44403c; }
     .badge-audio    { background: #f3e8ff; color: #7e22ce; }
-    .badge-ebook    { background: #dbeafe; color: #1d4ed8; }
+    .badge-ebook    { background: #fef3c7; color: #92400e; }
     .badge-audiobook{ background: #f3e8ff; color: #7e22ce; }
     .badge-magazine { background: #dcfce7; color: #166534; }
 
@@ -214,15 +214,6 @@
 
     .badge-loan::before { content: "📚"; font-size: 0.75rem; }
 
-    .badge-available  { background: #dcfce7; color: #166534; }
-    .badge-waitlist   { background: #fef3c7; color: #92400e; }
-    .badge-unavailable{ background: #fee2e2; color: #991b1b; }
-
-    .availability-detail {
-      font-size: 0.75rem;
-      color: #64748b;
-      margin-top: 0.25rem;
-    }
 
     /* no-loan indicator shown only on hover/subtle */
     .badge-no-loan-unknown {
@@ -246,7 +237,6 @@
   <div id="evrit-col">
     <div class="column-header">
       <h2>עברית</h2>
-      <span id="evrit-count" class="result-count" style="display:none"></span>
     </div>
     <div id="evrit-results" class="state-box">חפש ספר כדי לראות תוצאות</div>
   </div>
@@ -255,7 +245,6 @@
   <div id="libby-col">
     <div class="column-header">
       <h2>ליבי</h2>
-      <span id="libby-count" class="result-count" style="display:none"></span>
     </div>
     <div id="libby-results" class="state-box">חפש ספר כדי לראות תוצאות</div>
   </div>
@@ -272,13 +261,6 @@
 
     const btn = document.getElementById('search-btn');
     btn.disabled = true;
-
-    // Reset counts
-    ['evrit-count', 'libby-count'].forEach(id => {
-      const el = document.getElementById(id);
-      el.style.display = 'none';
-      el.textContent = '';
-    });
 
     // Show loaders
     setLoading('evrit-results');
@@ -334,11 +316,6 @@
       return;
     }
 
-    // Show count
-    const countEl = document.getElementById('evrit-count');
-    countEl.textContent = shown;
-    countEl.style.display = '';
-
     container.innerHTML = books.map(renderEvritCard).join('');
   }
 
@@ -393,10 +370,6 @@
       return;
     }
 
-    const countEl = document.getElementById('libby-count');
-    countEl.textContent = books.length;
-    countEl.style.display = '';
-
     container.innerHTML = books.map(renderLibbyCard).join('');
   }
 
@@ -415,22 +388,6 @@
     else if (typeId === 'magazine') typeBadge = '<span class="badge badge-magazine">מגזין</span>';
     else if (b.type) typeBadge = `<span class="badge badge-digital">${escHtml(b.type)}</span>`;
 
-    let availBadge, availDetail = '';
-    if (b.isAvailable) {
-      availBadge = `<span class="badge badge-available">זמין</span>`;
-      if (b.availableCopies) {
-        availDetail = `<div class="availability-detail">${b.availableCopies} עותקים זמינים מתוך ${b.ownedCopies}</div>`;
-      }
-    } else if (b.ownedCopies > 0) {
-      availBadge = `<span class="badge badge-waitlist">בתור</span>`;
-      const waitText = b.estimatedWaitDays > 0
-        ? `ממתינים: ${b.holdsCount} | המתנה משוערת: ~${b.estimatedWaitDays} ימים`
-        : `ממתינים: ${b.holdsCount}`;
-      availDetail = `<div class="availability-detail">${waitText}</div>`;
-    } else {
-      availBadge = `<span class="badge badge-unavailable">לא זמין</span>`;
-    }
-
     return `
       <div class="${cardClass}">
         ${coverHtml}
@@ -439,9 +396,7 @@
           ${b.author ? `<div class="book-author">${escHtml(b.author)}</div>` : ''}
           <div class="badges">
             ${typeBadge}
-            ${availBadge}
           </div>
-          ${availDetail}
         </div>
       </div>`;
   }
