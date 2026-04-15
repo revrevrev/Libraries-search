@@ -430,6 +430,13 @@
       return;
     }
 
+    const onlyAudio = books.every(b => (b.typeId || '').toLowerCase() === 'audiobook');
+    if (onlyAudio) {
+      container.innerHTML = `<div class="state-box">נמצאו רק ספרי שמע</div>` + books.map(renderLibbyCard).join('');
+      if (q) addToWatchlist(q);
+      return;
+    }
+
     // If we got results for a watched query, remove it from the watchlist
     if (q) removeFromWatchlist(q);
     container.innerHTML = books.map(renderLibbyCard).join('');
