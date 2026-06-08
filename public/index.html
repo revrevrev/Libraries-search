@@ -266,6 +266,27 @@
     .watchlist-search:hover { background: #92400e; }
     .watchlist-remove { background: #f1f5f9; color: #64748b; }
     .watchlist-remove:hover { background: #e2e8f0; }
+
+    .watchlist-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .watchlist-header-row h3 { margin-bottom: 0; }
+
+    .watchlist-search-all { background: #0f766e; color: white; }
+    .watchlist-search-all:hover { background: #0d5f5b; }
+    .watchlist-search-all:disabled { background: #aaa; cursor: not-allowed; }
+
+    .search-all-group-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #94a3b8;
+      padding: 0.5rem 0.25rem 0.15rem;
+      margin-top: 0.25rem;
+    }
   </style>
 </head>
 <body>
@@ -294,7 +315,10 @@
     </div>
     <div id="libby-results" class="state-box">חפש ספר כדי לראות תוצאות</div>
     <div id="watchlist-section" hidden>
-      <h3>ספרים שלא מצאתי בעבר בליבי</h3>
+      <div class="watchlist-header-row">
+        <h3>ספרים שלא מצאתי בעבר בליבי</h3>
+        <button id="search-all-btn" class="watchlist-btn watchlist-search-all" onclick="searchAll()">חפש הכל</button>
+      </div>
       <div id="watchlist-items"></div>
     </div>
   </div>
@@ -496,6 +520,55 @@
   }
 
   renderWatchlist();
+
+  // ── Search All watchlist items in Libby ───────────────────────────────────
+
+  let _searchAllRunning = false;
+
+  async function searchAll() {
+    if (_searchAllRunning) return;
+    const list = loadWatchlist();
+    if (list.length === 0) return;
+
+    _searchAllRunning = true;
+    const searchBtn = document.getElementById('search-btn');
+    const allBtn    = document.getElementById('search-all-btn');
+    searchBtn.disabled = true;
+    allBtn.disabled    = true;
+
+    const allFound = []; // [{ query, books }]
+
+    for (let i = 0; i < list.length; i++) {
+      const { query } = list[i];
+      document.getElementById('libby-results').innerHTML =
+        `<div class="state-box"><div class="spinner"></div><br>בודק ${i + 1} מתוך ${list.length}: ${escHtml(query)}</div>`;
+
+      try {
+        const data = await apiFetch(`/api/libby?q=${encodeURIComponent(query)}`);
+        const { books } = data;
+        if (books && books.length > 0) {
+          const nonAudio = books.filter(b => (b.typeId || '').toLowerCase() !== 'audiobook');
+          if (nonAudio.length > 0) {
+            allFound.push({ query, books: nonAudio });
+            removeFromWatchlist(query);
+          }
+        }
+      } catch (_) { /* skip individual failures */ }
+    }
+
+    if (allFound.length === 0) {
+      document.getElementById('libby-results').innerHTML =
+        `<div class="state-box">לא נמצאו תוצאות חדשות ברשימת המעקב</div>`;
+    } else {
+      document.getElementById('libby-results').innerHTML = allFound.map(({ query, books }) =>
+        `<div class="search-all-group-label">${escHtml(query)}</div>` + books.map(renderLibbyCard).join('')
+      ).join('');
+    }
+
+    _searchAllRunning = false;
+    searchBtn.disabled = false;
+    allBtn.disabled    = false;
+  }
 
   function renderLibbyCard(b) {
     const hasCover = !!b.coverUrl;
