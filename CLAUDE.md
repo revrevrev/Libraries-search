@@ -6,6 +6,7 @@ Node.js/Express app that searches for books in e-vrit and Libby (Tel Aviv OverDr
 
 - **`server.js`** — Express backend on port 3001, two API endpoints
 - **`public/index.html`** — Single-file frontend, vanilla JS, Hebrew RTL
+- **`README.md`** — User-facing project documentation
 
 ## Running
 
@@ -27,19 +28,21 @@ Deployed on [Render.com](https://render.com) as a Web Service from the GitHub re
 ## API Endpoints
 
 ### `GET /api/evrit?q=<query>`
-Scrapes e-vrit search results.
-- Fetches `https://www.e-vrit.co.il/Search/{query}`
-- Extracts product data from the `"ProductListItems"` key inside the `ReactDOM.hydrate(...)` script block
-- For each product, fetches its individual page and checks for `loan-product__txt` CSS class to determine library loan eligibility
+Proxies to e-vrit's internal Next.js API.
+- Fetches `https://www.e-vrit.co.il/api/search/{encodedQuery}/products?take=15`
+- The site migrated to Next.js (2025); the old `/Search/{query}` HTML-scraping approach no longer works
 - Returns up to 15 results
 
-Key field names in the e-vrit React props:
+Key field names in the e-vrit API response (`Items` array):
 - `ProductID` — numeric ID (used in product URLs)
-- `Name` — book title
-- `AuthorName` — author
-- `IsDigital`, `IsPrinted`, `IsAudio` — format flags
-- `Image` — relative path, prefix with `https://www.e-vrit.co.il/`
-- `ProductPrices.DigitalOriginalPrice`
+- `ProductName` — book title
+- `Authors` — array of `{ID, Name, Url}` objects
+- `ProductPricing.DigitalPricing` — present if book has a digital version (also signals digital availability)
+- `ProductPricing.AudioPricing` — present if book has an audio version
+- `ProductPricing.PrintedPricing` — present if book has a printed version
+- `Image` — relative path, prefix with `https://images.e-vrit.co.il/`
+- `AvgReviews`, `CountReviews` — rating data
+- Product URL format: `https://www.e-vrit.co.il/product/{id}/{title-with-hyphens}`
 
 ### `GET /api/libby?q=<query>`
 Proxies to the OverDrive API.
@@ -51,10 +54,11 @@ Proxies to the OverDrive API.
 
 ## Loan Detection (e-vrit)
 
-Loanable books ("ספרייה ציבורית דיגיטלית") are identified by the presence of `class="loan-product__txt"` in the product page HTML.
-- The Hebrew text "ספרייה ציבורית דיגיטלית" also appears in the site navigation (link to `/Group/286/`), so text-only matching produces false positives — always use the CSS class.
-- `IsLoan` is NOT present in the search results list; individual product page fetches are required.
-
-## JSON Extraction from e-vrit HTML
-
-The function `extractJSONArray(html, key)` uses bracket-matching (handling nested objects, arrays, and string literals) to extract a JSON array from the server-rendered React props script. The relevant key is `ProductListItems`.
+Library loan status (`isLoan`) is detected via a **startup ID cache**:
+- e-vrit's public digital library books belong to **Group 286** ("ספרייה ציבורית דיגיטלית") — ~27,108 books total.
+- The server paginates `GET https://www.e-vrit.co.il/api/group/286/products?skip=N&take=1000` on startup (~28 sequential requests), collecting all `ProductID` values into a JavaScript `Set`.
+- The cache refreshes every 6 hours via `setInterval`.
+- `isLoan` is `true`/`false` once the cache is ready, `null` during the brief startup window before the first load completes.
+- Why not single-request? `take=27500` technically works but returns 85 MB JSON over ~3 minutes; pagination is more resilient and much faster.
+- The old approach (CSS class `loan-product__txt`) is gone — the site is now client-side rendered.
+- `IsDigitalLending`/`IsAudioLending` in the product API are per-user and always `false` for unauthenticated requests.
