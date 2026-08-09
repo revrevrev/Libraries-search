@@ -25,25 +25,22 @@ let loanCacheReady = false;
 
 async function refreshLoanCache() {
   const BATCH = 1000;
-  const ids = new Set();
-  let skip = 0;
+  // 30 pages covers 27108+ books with margin; pages past the end return no Items
+  const skips = Array.from({ length: 30 }, (_, i) => i * BATCH);
 
   console.log('[loan-cache] refreshing...');
-  for (;;) {
-    try {
-      const url = `https://www.e-vrit.co.il/api/group/286/products?skip=${skip}&take=${BATCH}`;
-      const data = await fetch(url, { headers: BROWSER_HEADERS }).then(r => r.json());
+  const results = await Promise.all(
+    skips.map(skip =>
+      fetch(`https://www.e-vrit.co.il/api/group/286/products?skip=${skip}&take=${BATCH}`, { headers: BROWSER_HEADERS })
+        .then(r => r.json())
+        .catch(() => null)
+    )
+  );
 
-      if (!data.Items || data.Items.length === 0) break;
-
-      for (const p of data.Items) ids.add(p.ProductID);
-
-      if (data.Items.length < BATCH) break;
-      skip += BATCH;
-    } catch (err) {
-      console.error('[loan-cache] fetch error at skip', skip, ':', err.message);
-      break;
-    }
+  const ids = new Set();
+  for (const data of results) {
+    if (!data || !data.Items) continue;
+    for (const p of data.Items) ids.add(p.ProductID);
   }
 
   if (ids.size > 0) {
@@ -55,8 +52,6 @@ async function refreshLoanCache() {
   }
 }
 
-// Refresh on startup (non-blocking) and every 6 hours
-refreshLoanCache().catch(err => console.error('[loan-cache] startup error:', err.message));
 setInterval(() => refreshLoanCache().catch(err => console.error('[loan-cache] refresh error:', err.message)), 6 * 60 * 60 * 1000);
 
 // ─── e-vrit search endpoint ────────────────────────────────────────────────
@@ -152,6 +147,8 @@ function killIfSameProcess(port) {
 
 killIfSameProcess(PORT);
 
-app.listen(PORT, () => {
-  console.log(`Library search running at http://localhost:${PORT}`);
-});
+refreshLoanCache()
+  .catch(err => console.error('[loan-cache] startup error:', err.message))
+  .finally(() => {
+    app.listen(PORT, () => console.log(`Library search running at http://localhost:${PORT}`));
+  });
